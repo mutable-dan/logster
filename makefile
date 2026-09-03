@@ -5,7 +5,7 @@ INCLUDE_DIR = -I. -I.. -Iinclude  -I../../open-source-projects/cxxopts/include/
 
 
 EXE      = logster
-SOURCE   = src/main.cpp 
+SOURCE   = src/main.cpp src/log_reader.cpp
 LINKLIBS = -lpthread 
 OBJ_DIR  = ./obj
 
@@ -21,6 +21,8 @@ CSANITIZER    = $(CFLAGSDEBUG) -fsanitize=address -fno-omit-frame-pointer
 
 .PHONY: all release debug sanitize install uninstall clean cleanobj
 
+# default CXXFLAGS if not building via 'release', 'debug', or 'sanitize'
+CXXFLAGS ?= $(CFLAGSDEBUG)
 
 .PHONY: release
 release: CXXFLAGS = $(CFLAGSRELEASE) 
