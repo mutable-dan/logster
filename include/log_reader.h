@@ -3,33 +3,48 @@
 //
 
 #pragma once
+#include <cstdint>
 #include <string>
-
+#include <tuple>
 #include <unistd.h>
 
 namespace logster
 {
-    class log_reader
+    const size_t g_pgSize = sysconf( _SC_PAGESIZE );
+    using buffer_t = std::uint8_t*;
+    using read_t   = std::tuple<bool, buffer_t>;
+
+    class log_reader final
     {
         private:
-            std::string m_strLogPath;
-            bool        m_bUseMemMap = false;
+            bool            m_bUseMemMap        = false;
+            bool            m_bIsLogOpen        = false;
+            int             m_fd                = 0;         // file desc
+            size_t          m_lBufferSize       = 0;
+            uint8_t        *m_pBuffer           = nullptr;
 
-            bool    readLogPosix();
-            bool    readLogMemMap();
-            int     m_fd;               // file desc
+            uint8_t        *m_pCurrentBuffer    = nullptr;
+
+
+            bool        readLogBuffer();
+            bool        readLogMemMap();
+            read_t      readPage()          noexcept;
 
 
         public:
-            explicit log_reader( const std::string strLogPath ) : m_strLogPath( strLogPath ) {};
-            ~log_reader();
-            log_reader( const log_reader& ) = delete;
-            log_reader( const log_reader&& ) = delete;
-            log_reader& operator=( const log_reader& ) = delete;
+            log_reader()                                = delete;
+           ~log_reader();
+            log_reader( const log_reader& )             = delete;
+            log_reader( const log_reader&& )            = delete;
+            log_reader& operator=( const log_reader& )  = delete;
+            log_reader& operator=( const log_reader&& ) = delete;
 
-            void setLogPath( const std::string& strLogPath );
-            void useMemMap( );
-            bool readLog();
+            explicit log_reader( bool a_buUseMap = false );
+
+            bool     getLine();
+            bool     open( const std::string& strLogPath );
+            bool     close();
+            size_t   getBufferSize() const { return( m_lBufferSize ); };
 
     };
 }
