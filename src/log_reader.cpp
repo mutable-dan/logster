@@ -3,38 +3,129 @@
 //
 
 #include "../include/log_reader.h"
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
 
+logster::log_reader::log_reader( bool a_bUseMemMap )
+{
+    m_bUseMemMap = a_bUseMemMap;
+}
 
 logster::log_reader::~log_reader()
 {
-
+    // i know this has no impact on per, since likely called once
+    if( m_fd >= 0 )  [[unlikely]]
+    {
+        this->close();
+    }
 }
 
-void logster::log_reader::setLogPath( const std::string& strLogPath )
+bool logster::log_reader::close()
 {
-    m_strLogPath = strLogPath;
+    if( m_fd >= 0 )  [[likely]]
+    {
+        if( m_bUseMemMap )
+        {
+            munmap(  m_pBuffer, g_pgSize );
+            m_pBuffer = nullptr;
+        }
+        if( 0 == ::close( m_fd ) )
+        {
+            m_fd = -1;
+            return true;
+        }
+    }
+    return false;
 }
 
-void logster::log_reader::useMemMap( )
+
+/**
+ *
+ * @param strLogPath
+ * @return bool if file was opened: true, if failed to open or open: false
+ */
+bool logster::log_reader::open( const std::string& strLogPath )
 {
-    m_bUseMemMap = true;
+    if( false == m_bIsLogOpen )
+    {
+        m_lBufferSize = g_pgSize * 2;
+        m_fd = ::open( strLogPath.c_str(), O_RDONLY );
+        if( m_fd >= 0 )  [[likely]]
+        {
+            // likely not 0, 1, 2
+            m_bIsLogOpen = true;
+            posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, m_lBufferSize );
+
+            if( m_bUseMemMap )
+            {
+                // consider: MAP_HUGE_1GB
+                m_pBuffer = static_cast<uint8_t*>( mmap( NULL, g_pgSize, PROT_READ , MAP_PRIVATE, m_fd, 0 ) );
+            } else
+            {
+                m_pBuffer = new uint8_t[ g_pgSize ];
+            }
+
+            return true;
+        }
+    }
+    return false;
 }
 
-bool logster::log_reader::readLog()
+
+logster::buffer_t inline logster::log_reader::getLine()
 {
+    if( false == m_bIsLogOpen )
+    {
+        return false;
+    }
+
     if( m_bUseMemMap )
     {
         return readLogMemMap();
     } else
     {
-        return readLogPosix();
+        auto [bRes, pBuff] = readPage();
+        if( bRes )
+        {
+            return pBuff;
+        } else
+        {
+            return nullptr;
+        }
     }
 }
 
-
-bool logster::log_reader::readLogPosix()
+logster::read_t logster::log_reader::readPage() noexcept
 {
-   return true;
+    if( m_bUseMemMap )
+    {
+    } else
+    {
+        [[maybe_unused]] ssize_t nRead = ::read( m_fd, m_pBuffer, g_pgSize );
+        if( m_pCurrentBuffer == nullptr )
+        {
+            m_pCurrentBuffer = m_pBuffer;
+        } else
+        {
+            m_pCurrentBuffer = m_pCurrentBuffer + g_pgSize;
+            if( m_pCurrentBuffer > m_pBuffer + g_pgSize )
+            {
+                m_pCurrentBuffer = m_pBuffer;
+            }
+        }
+        return { true, m_pCurrentBuffer };
+    }
+    return { false, nullptr };
+    ;
+}
+
+
+bool logster::log_reader::readLogBuffer()
+{
+    return  false;
+
 }
 
 bool logster::log_reader::readLogMemMap()
