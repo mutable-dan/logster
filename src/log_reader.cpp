@@ -5,8 +5,15 @@
 #include "../include/log_reader.h"
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <ostream>
+#include <format>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
+#include <iostream>
+#include <string.h>
+
+using namespace std;
 
 logster::log_reader::log_reader( bool a_bUseMemMap )
 {
@@ -73,8 +80,10 @@ bool logster::log_reader::open( const std::string& strLogPath )
             {
                 posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, g_lMemSize );
             }
-
             return true;
+        } else
+        {
+            cerr << std::format( "ERROR: {} {} opening log {}", strerror( errno ), errno, strLogPath ) << endl;
         }
     }
     return false;
