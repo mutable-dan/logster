@@ -24,12 +24,20 @@ logster::log_reader::~log_reader()
 
 bool logster::log_reader::close()
 {
-    if( m_fd >= 0 )  [[likely]]
+    if( m_fd >= 3 )  [[likely]]
     {
+        m_bIsLogOpen = false;
         if( m_bUseMemMap )
         {
             munmap(  m_pBuffer, g_pgSize );
             m_pBuffer = nullptr;
+        } else
+        {
+            if( m_pBuffer != nullptr )
+            {
+                free( m_pBuffer );
+                m_pBuffer = nullptr;
+            }
         }
         if( 0 == ::close( m_fd ) )
         {
@@ -50,13 +58,12 @@ bool logster::log_reader::open( const std::string& strLogPath )
 {
     if( false == m_bIsLogOpen )
     {
-        m_lBufferSize = g_pgSize * 2;
+        // m_lBufferSize = g_pgSize * ;
         m_fd = ::open( strLogPath.c_str(), O_RDONLY );
         if( m_fd >= 0 )  [[likely]]
         {
             // likely not 0, 1, 2
             m_bIsLogOpen = true;
-            posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, m_lBufferSize );
 
             if( m_bUseMemMap )
             {
@@ -64,7 +71,7 @@ bool logster::log_reader::open( const std::string& strLogPath )
                 m_pBuffer = static_cast<uint8_t*>( mmap( NULL, g_pgSize, PROT_READ , MAP_PRIVATE, m_fd, 0 ) );
             } else
             {
-                m_pBuffer = new uint8_t[ g_pgSize ];
+                posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, g_lMemSize );
             }
 
             return true;
@@ -74,16 +81,16 @@ bool logster::log_reader::open( const std::string& strLogPath )
 }
 
 
-logster::buffer_t inline logster::log_reader::getLine()
+logster::buffer_t logster::log_reader::getLine()
 {
     if( false == m_bIsLogOpen )
     {
-        return false;
+        return nullptr;
     }
 
     if( m_bUseMemMap )
     {
-        return readLogMemMap();
+        return nullptr;
     } else
     {
         auto [bRes, pBuff] = readPage();

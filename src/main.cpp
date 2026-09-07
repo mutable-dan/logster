@@ -42,10 +42,8 @@ int main( const int argc, const char *argv[] )
             return -1;
         }
 
-        logster::log_reader log2( false );
         logster::log_reader log( false );
         log.open( strLog_file );
-
         log.getLine();
 
         log.close();
