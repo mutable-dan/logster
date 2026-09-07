@@ -50,12 +50,13 @@ bool logster::log_reader::open( const std::string& strLogPath )
 {
     if( false == m_bIsLogOpen )
     {
+        m_lBufferSize = g_pgSize * 2;
         m_fd = ::open( strLogPath.c_str(), O_RDONLY );
         if( m_fd >= 0 )  [[likely]]
         {
             // likely not 0, 1, 2
             m_bIsLogOpen = true;
-            posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, g_pgSize );
+            posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, m_lBufferSize );
 
             if( m_bUseMemMap )
             {
@@ -73,7 +74,7 @@ bool logster::log_reader::open( const std::string& strLogPath )
 }
 
 
-bool inline logster::log_reader::getLine()
+logster::buffer_t inline logster::log_reader::getLine()
 {
     if( false == m_bIsLogOpen )
     {
@@ -85,28 +86,46 @@ bool inline logster::log_reader::getLine()
         return readLogMemMap();
     } else
     {
-        return readLogPosix();
+        auto [bRes, pBuff] = readPage();
+        if( bRes )
+        {
+            return pBuff;
+        } else
+        {
+            return nullptr;
+        }
     }
 }
 
-bool logster::log_reader::readPage()
+logster::read_t logster::log_reader::readPage() noexcept
 {
     if( m_bUseMemMap )
     {
-        [[maybe_unused]] ssize_t nRead = ::read( m_fd, m_pBuffer, g_pgSize );
-        //(void)nRead;
     } else
     {
-
+        [[maybe_unused]] ssize_t nRead = ::read( m_fd, m_pBuffer, g_pgSize );
+        if( m_pCurrentBuffer == nullptr )
+        {
+            m_pCurrentBuffer = m_pBuffer;
+        } else
+        {
+            m_pCurrentBuffer = m_pCurrentBuffer + g_pgSize;
+            if( m_pCurrentBuffer > m_pBuffer + g_pgSize )
+            {
+                m_pCurrentBuffer = m_pBuffer;
+            }
+        }
+        return { true, m_pCurrentBuffer };
     }
-    return true
+    return { false, nullptr };
     ;
 }
 
 
-bool logster::log_reader::readLogPosix()
+bool logster::log_reader::readLogBuffer()
 {
-   return true;
+    return  false;
+
 }
 
 bool logster::log_reader::readLogMemMap()

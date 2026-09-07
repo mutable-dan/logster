@@ -5,11 +5,14 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <tuple>
 #include <unistd.h>
 
 namespace logster
 {
     const size_t g_pgSize = sysconf( _SC_PAGESIZE );
+    using buffer_t = std::uint8_t*;
+    using read_t   = std::tuple<bool, buffer_t>;
 
     class log_reader final
     {
@@ -17,12 +20,15 @@ namespace logster
             bool            m_bUseMemMap        = false;
             bool            m_bIsLogOpen        = false;
             int             m_fd                = 0;         // file desc
+            size_t          m_lBufferSize       = 0;
             uint8_t        *m_pBuffer           = nullptr;
 
+            uint8_t        *m_pCurrentBuffer    = nullptr;
 
-            bool    readLogPosix();
-            bool    readLogMemMap();
-            bool    readPage();
+
+            bool        readLogBuffer();
+            bool        readLogMemMap();
+            read_t      readPage()          noexcept;
 
 
         public:
@@ -35,9 +41,10 @@ namespace logster
 
             explicit log_reader( bool a_buUseMap = false );
 
-            bool     getLine();
+            buffer_t getLine();
             bool     open( const std::string& strLogPath );
             bool     close();
+            size_t   getBufferSize() const { return( m_lBufferSize ); };
 
     };
 }
