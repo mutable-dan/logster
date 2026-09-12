@@ -78,7 +78,7 @@ bool logster::log_reader::open( const std::string& strLogPath )
                 m_pBuffer = static_cast<uint8_t*>( mmap( NULL, g_pgSize, PROT_READ , MAP_PRIVATE, m_fd, 0 ) );
             } else
             {
-                posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, g_lMemSize );
+                posix_memalign( reinterpret_cast<void**>(&m_pBuffer), g_pgSize, g_lMemTotalSize );
             }
             return true;
         } else
@@ -147,4 +147,23 @@ bool logster::log_reader::readLogBuffer()
 bool logster::log_reader::readLogMemMap()
 {
     return false;
+}
+
+
+void logster::log_reader::fillBuffer()
+{
+    //size_t lIndex = 0;
+    uint8_t **pBuffers = new uint8_t*[ g_nMemPageCount ];
+    for( uint16_t ndx = 0; ndx < (uint16_t)g_nMemPageCount; ndx++ )
+    {
+        pBuffers[ndx] = m_pBuffer + (g_pgSize * ndx);;
+    }
+
+    uint16_t ndx = 0;
+    while( true )
+    {
+        // put blocing here
+        ssize_t nRead = ::read( m_fd, pBuffers[ndx], g_pgSize );
+    }
+
 }

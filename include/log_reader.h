@@ -10,9 +10,9 @@
 
 namespace logster
 {
-    constexpr size_t g_lMemMultiple = 2;
+    constexpr size_t g_nMemPageCount = 2;
     const size_t g_pgSize = sysconf( _SC_PAGESIZE );
-    const size_t g_lMemSize = g_pgSize * g_lMemMultiple;
+    const size_t g_lMemTotalSize = g_pgSize * g_nMemPageCount;
 
     using buffer_t = std::uint8_t*;
     using read_t   = std::tuple<bool, buffer_t>;
@@ -23,15 +23,14 @@ namespace logster
             bool            m_bUseMemMap        = false;
             bool            m_bIsLogOpen        = false;
             int             m_fd                = 0;         // file desc
-            // size_t          m_lBufferSize       = -1;
             uint8_t        *m_pBuffer           = nullptr;
 
             uint8_t        *m_pCurrentBuffer    = nullptr;
 
-
             bool        readLogBuffer();
             bool        readLogMemMap();
             read_t      readPage()          noexcept;
+            void        fillBuffer();
 
 
         public:
@@ -47,7 +46,7 @@ namespace logster
             buffer_t getLine();
             bool     open( const std::string& strLogPath );
             bool     close();
-            size_t   getBufferSize() const { return( g_lMemSize ); };
+            size_t   getBufferSize() const { return( g_lMemTotalSize ); };
 
     };
 }
