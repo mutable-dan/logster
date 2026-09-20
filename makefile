@@ -16,7 +16,7 @@ DEPS     = $(OBJS:.o=.d)
 
 CFLAGSALL     = -std=c++23 -Wall -Wextra -Werror -Wshadow -march=native -fno-stack-protector -pthread -Werror -pedantic -Wextra -Waddress -Warray-bounds -Wno-builtin-macro-redefined -Wundef
 CFLAGSRELEASE = -O2 -DNDEBUG $(CFLAGSALL)
-CFLAGSDEBUG   = -ggdb3 -O0 -DDEBUG $(CFLAGSALL)
+CFLAGSDEBUG   = -ggdb3 -Og -DDEBUG $(CFLAGSALL)
 CSANITIZER    = $(CFLAGSDEBUG) -fsanitize=address -fno-omit-frame-pointer
 
 .PHONY: all release debug sanitize install uninstall clean cleanobj

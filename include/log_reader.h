@@ -3,29 +3,36 @@
 //
 
 #pragma once
+#include <condition_variable>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <tuple>
+#include <thread>
 #include <unistd.h>
 
 namespace logster
 {
-    constexpr size_t g_nMemPageCount = 2;
-    const size_t g_pgSize = sysconf( _SC_PAGESIZE );
-    const size_t g_lMemTotalSize = g_pgSize * g_nMemPageCount;
-
     using buffer_t = std::uint8_t*;
     using read_t   = std::tuple<bool, buffer_t>;
 
     class log_reader final
     {
         private:
-            bool            m_bUseMemMap        = false;
-            bool            m_bIsLogOpen        = false;
-            int             m_fd                = 0;         // file desc
-            uint8_t        *m_pBuffer           = nullptr;
+            size_t          m_pgSize        = sysconf( _SC_PAGESIZE );
+            size_t          m_nMemPageCount = 2;    // page size default to sytem page, the count is the number of pages used
+            size_t          m_lMemTotalSize = m_pgSize * m_nMemPageCount;
+            int             m_fd            = 0;            // file desc
+            uint8_t        *m_pBuffer       = nullptr;      // size of page * page count, all total buffer used
+            bool            m_bUseMemMap    = false;        // false - poxic hheap alloc, else mempmap
+            bool            m_bIsFileOpen   = false;        // false if path or other error and file not open
+            bool            m_bIsMemAlloc   = false;        // true if mem was alloc on heap or memmap
 
-            uint8_t        *m_pCurrentBuffer    = nullptr;
+            std::jthread                m_jThread;
+            std::mutex                  m_muxBufferLock;
+            std::condition_variable_any m_cvBuffer;
+            bool                        m_bConditPred       = false;
+            uint8_t                   **m_ppCurrentBuffer   = nullptr;
 
             bool        readLogBuffer();
             bool        readLogMemMap();
@@ -43,10 +50,13 @@ namespace logster
 
             explicit log_reader( bool a_buUseMap = false );
 
+            bool     setPages( int32_t a_nPages ) noexcept;
+            int32_t  getPages() const noexcept { return m_nMemPageCount; }
+            void     setpPageSize( int32_t a_nPageSize ) noexcept { m_pgSize = a_nPageSize; }
             buffer_t getLine();
             bool     open( const std::string& strLogPath );
             bool     close();
-            size_t   getBufferSize() const { return( g_lMemTotalSize ); };
+            size_t   getBufferSize() const { return( m_lMemTotalSize ); };
 
     };
 }

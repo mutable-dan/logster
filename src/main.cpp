@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <string>
 
@@ -9,13 +8,13 @@
 
 using namespace std;
 
-int main( const int argc, const char *argv[] )
+int main( const int argc, const char* argv[] )
 {
     cxxopts::Options options( "reasoncode", "parse reason codes" );
 
     options.add_options()
         ( "l,log", "path to log file", cxxopts::value<std::string>() )
-        ( "h,help", "Usage"                   );
+        ( "h,help", "Usage" );
 
     try
     {
@@ -35,21 +34,14 @@ int main( const int argc, const char *argv[] )
             }
         }
 
-        // check if buffer can be spit intwo
-        if( (logster::g_pgSize % 2) != 0 )
-        {
-            cerr << "ERROR: buffer size must be a multiple of 2" << endl;
-            return -1;
-        }
 
         logster::log_reader log( false );
+        log.setPages( 2 );
+        log.setpPageSize( 8 );
         log.open( strLog_file );
         log.getLine();
 
-        log.close();
-
-        ;
-
+        log.close();;
     } catch( exception& e )
     {
         std::cerr << e.what() << std::endl;
