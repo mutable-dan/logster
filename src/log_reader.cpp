@@ -131,7 +131,7 @@ bool logster::log_reader::open( const std::string& strLogPath )
 
 /**
  * @brief read asignle line from bufffer. line ends with CR or LF
- * @return
+ * @return ptr to current line, null term
  */
 logster::buffer_t logster::log_reader::getLine()
 {
@@ -198,11 +198,33 @@ bool logster::log_reader::readLogMemMap()
  * @details for a buffer of size b, split into p pages. if page size is
  * when first runs, it tries to fill all of the pages with log data
  * every time the page index increments, it fills the empty buffer with data
+ *
+ *  setup a page  vector where the size if the number of pages and the index is the page
+ *      each index contains pointer to page in buffer
+ *      if page is available, ie buffer has data and data is not read
+ *
+ *  buffer is alloc by n pages and zero'd
+ *  whole not eof
+ *      for each page (index)
+ *          read page into buffer
+ *          set page buffer for index of page in buffer to point to position in buffer and mark the page avail
+ *
+ *  if not eof then start loop to read buffer and populate page buffer on a signal
+ *  when the read buffer fn finishes reading a page it will signal on a condition to read next page
+ *  read into buffer at pageindex
+ *
+ *
+ *  edge cases
+ *      first read is eof
+ *      last read on load has eof on last page
+ *
  */
 void logster::log_reader::fillBuffer()
 {
-    size_t lIndex = 0;
-    
+    size_t lPageIndex = 0;
+    using pages_t  = std::vector<page_t>;
+
+    pages_t vPages( m_nMemPageCount, { nullptr, false } );
 
     bool bEof = false;
     for( uint16_t ndx = 0; ndx < (uint16_t)m_nMemPageCount; ++ndx )
@@ -213,6 +235,9 @@ void logster::log_reader::fillBuffer()
         {
             break;
             bEof = true;
+        } else
+        {
+            vPages[ndx] = { m_pBuffer + ndx*m_pgSize*sizeof(uint8_t), true };
         }
     }
     if( true == bEof)
@@ -220,7 +245,7 @@ void logster::log_reader::fillBuffer()
         return;
     }
 
-    while( lIndex < m_nMemPageCount )
+    while( lPageIndex < m_nMemPageCount )
     {
 
     }

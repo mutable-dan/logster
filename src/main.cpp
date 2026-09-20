@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 #include <string>
 
@@ -33,7 +34,6 @@ int main( const int argc, const char* argv[] )
                 strLog_file = result["log"].as<std::string>();
             }
         }
-
 
         logster::log_reader log( false );
         log.setPages( 2 );
