@@ -3,12 +3,11 @@
 //
 
 #pragma once
-#include <condition_variable>
 #include <cstdint>
-#include <mutex>
+#include <semaphore>
 #include <string>
 #include <tuple>
-#include <vector>
+#include <atomic>
 #include <thread>
 #include <unistd.h>
 
@@ -16,6 +15,13 @@ namespace logster
 {
     using buffer_t = std::uint8_t*;
     using read_t   = std::tuple<bool, buffer_t>;
+
+    struct page_t
+    {
+        buffer_t   pPage;
+        bool        bAvailable;
+    };
+
 
     class log_reader final
     {
@@ -29,23 +35,18 @@ namespace logster
             bool            m_bIsFileOpen   = false;        // false if path or other error and file not open
             bool            m_bIsMemAlloc   = false;        // true if mem was alloc on heap or memmap
 
-            std::jthread                m_jThread;
-            std::mutex                  m_muxBufferLock;
-            std::condition_variable_any m_cvBuffer;
-            bool                        m_bConditPred       = false;
-            uint8_t                   **m_ppCurrentBuffer   = nullptr;
+            std::jthread                  m_jThread;
+            std::counting_semaphore< m_pgSize >        m_semBufferFill { 0 };
+            //std::mutex                  m_muxBufferLock;
+            //std::condition_variable_any m_cvBuffer;
+            bool                          m_bConditPred       = false;
+            std::atomic_bool              m_bStop             = false;
+            uint8_t                     **m_ppCurrentBuffer   = nullptr;
 
             bool        readLogBuffer();
             bool        readLogMemMap();
             read_t      readPage()          noexcept;
             void        fillBuffer();
-
-            struct page_t
-            {
-                buffer_t   pPage;
-                bool        bAvailable;
-            };
-
 
         public:
             log_reader()                                = delete;

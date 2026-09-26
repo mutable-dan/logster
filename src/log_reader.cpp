@@ -6,12 +6,15 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <ostream>
+#include <vector>
 #include <format>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <iostream>
 #include <string.h>
+
+using pages_t  = std::vector<logster::page_t>;
 
 using namespace std;
 
@@ -221,32 +224,28 @@ bool logster::log_reader::readLogMemMap()
  */
 void logster::log_reader::fillBuffer()
 {
-    size_t lPageIndex = 0;
-    using pages_t  = std::vector<page_t>;
 
     pages_t vPages( m_nMemPageCount, { nullptr, false } );
 
-    bool bEof = false;
     for( uint16_t ndx = 0; ndx < (uint16_t)m_nMemPageCount; ++ndx )
     {
         memset( (void*)( m_pBuffer + ndx*m_pgSize*sizeof(uint8_t) ), '0', m_pgSize*sizeof(uint8_t) );
         ssize_t nRead = ::read( m_fd, (m_pBuffer + ndx*m_pgSize*sizeof(uint8_t) ), m_pgSize );
         if( nRead == 0 )
         {
-            break;
-            bEof = true;
+            return;
         } else
         {
             vPages[ndx] = { m_pBuffer + ndx*m_pgSize*sizeof(uint8_t), true };
         }
     }
-    if( true == bEof)
-    {
-        return;
-    }
 
-    while( lPageIndex < m_nMemPageCount )
+    [[ maybe_unused ]] size_t lPageIndex = 0;
+    bool bEof = false;
+
+    while( (bEof == false) || (false == m_bStop) )
     {
+        // block
 
     }
     // unique_lock< std::mutex > condLock( m_muxBufferLock );
